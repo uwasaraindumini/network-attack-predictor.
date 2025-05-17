@@ -14,67 +14,91 @@ st.set_page_config(page_title="Network Attack Detector", layout="wide")
 st.markdown("<h2 style='text-align: center;'>🔐 Network Traffic Attack Detection</h2>", unsafe_allow_html=True)
 st.write("Fill in the following network traffic features to predict potential attack types:")
 
+# Function to safely convert input to float or int
+def to_number(value, field_name, number_type=float):
+    if value.strip() == "":
+        raise ValueError(f"{field_name} is required.")
+    try:
+        return number_type(value)
+    except ValueError:
+        raise ValueError(f"{field_name} must be a valid number.")
+
 with st.form("attack_form"):
     # First row
     col1, col2, col3 = st.columns(3)
     with col1:
-        dest_port = st.number_input("Destination Port", 0, 65535, 80)
+        dest_port = st.text_input("Destination Port", placeholder="e.g., 80")
     with col2:
-        flow_duration = st.number_input("Flow Duration (μs)", 0, 10_000_000, 1_000_000)
+        flow_duration = st.text_input("Flow Duration (μs)", placeholder="e.g., 123456")
     with col3:
-        total_fwd = st.number_input("Fwd Packets", 0, 100_000, 10)
+        total_fwd = st.text_input("Total Forward Packets", placeholder="e.g., 300")
 
     # Second row
     col4, col5, col6 = st.columns(3)
     with col4:
-        total_bwd = st.number_input("Bwd Packets", 0, 100_000, 10)
+        total_bwd = st.text_input("Total Backward Packets", placeholder="e.g., 250")
     with col5:
-        fwd_len_total = st.number_input("Fwd Total Len", 0, 1_000_000, 1000)
+        fwd_len_total = st.text_input("Total Length of Forward Packets", placeholder="e.g., 80000")
     with col6:
-        bwd_len_total = st.number_input("Bwd Total Len", 0, 1_000_000, 1000)
+        bwd_len_total = st.text_input("Total Length of Backward Packets", placeholder="e.g., 60000")
 
     # Third row
     col7, col8, col9 = st.columns(3)
     with col7:
-        fwd_len_max = st.number_input("Fwd Len Max", 0, 2000, 1500)
+        fwd_len_max = st.text_input("Forward Packet Len Max", placeholder="e.g., 1500")
     with col8:
-        bwd_len_max = st.number_input("Bwd Len Max", 0, 2000, 1500)
+        bwd_len_max = st.text_input("Backward Packet Len Max", placeholder="e.g., 1400")
     with col9:
-        flow_bps = st.number_input("Flow Bytes/sec", value=100_000.0)
+        flow_bps = st.text_input("Flow Bytes/sec", placeholder="e.g., 1000000")
 
     # Fourth row
     col10, col11, col12 = st.columns(3)
     with col10:
-        flow_pps = st.number_input("Flow Packets/sec", value=10.0)
+        flow_pps = st.text_input("Flow Packets/sec", placeholder="e.g., 1000")
     with col11:
-        pkt_len_mean = st.number_input("Pkt Len Mean", value=500.0)
+        pkt_len_mean = st.text_input("Packet Len Mean", placeholder="e.g., 500")
     with col12:
-        pkt_len_std = st.number_input("Pkt Len Std", value=100.0)
+        pkt_len_std = st.text_input("Packet Len Std", placeholder="e.g., 100")
 
     # Fifth row: Flags
     with st.expander("🔧 TCP Flag Counts"):
         col13, col14, col15 = st.columns(3)
         with col13:
-            fin = st.number_input("FIN Flag Count", 0, 10, 0)
-            rst = st.number_input("RST Flag Count", 0, 10, 0)
+            fin = st.text_input("FIN Flag Count", placeholder="e.g., 0")
+            rst = st.text_input("RST Flag Count", placeholder="e.g., 0")
         with col14:
-            syn = st.number_input("SYN Flag Count", 0, 10, 1)
-            psh = st.number_input("PSH Flag Count", 0, 10, 0)
+            syn = st.text_input("SYN Flag Count", placeholder="e.g., 1")
+            psh = st.text_input("PSH Flag Count", placeholder="e.g., 0")
         with col15:
-            ack = st.number_input("ACK Flag Count", 0, 10, 1)
+            ack = st.text_input("ACK Flag Count", placeholder="e.g., 1")
 
-    # Predict button
+    # Submit button
     submitted = st.form_submit_button("🚀 Predict Attack Type")
 
     if submitted:
         try:
+            # Convert all values
             features = [
-                dest_port, flow_duration, total_fwd, total_bwd,
-                fwd_len_total, bwd_len_total, fwd_len_max, bwd_len_max,
-                flow_bps, flow_pps, pkt_len_mean, pkt_len_std,
-                fin, syn, rst, psh, ack
+                to_number(dest_port, "Destination Port", int),
+                to_number(flow_duration, "Flow Duration", int),
+                to_number(total_fwd, "Total Forward Packets", int),
+                to_number(total_bwd, "Total Backward Packets", int),
+                to_number(fwd_len_total, "Total Length of Forward Packets"),
+                to_number(bwd_len_total, "Total Length of Backward Packets"),
+                to_number(fwd_len_max, "Forward Packet Len Max"),
+                to_number(bwd_len_max, "Backward Packet Len Max"),
+                to_number(flow_bps, "Flow Bytes/sec"),
+                to_number(flow_pps, "Flow Packets/sec"),
+                to_number(pkt_len_mean, "Packet Len Mean"),
+                to_number(pkt_len_std, "Packet Len Std"),
+                to_number(fin, "FIN Flag Count", int),
+                to_number(syn, "SYN Flag Count", int),
+                to_number(rst, "RST Flag Count", int),
+                to_number(psh, "PSH Flag Count", int),
+                to_number(ack, "ACK Flag Count", int),
             ]
 
+            # Make prediction
             input_array = np.array([features])
             prediction = model.predict(input_array)[0]
             proba = model.predict_proba(input_array)[0]
@@ -84,5 +108,7 @@ with st.form("attack_form"):
             st.success(f"🧠 Prediction: **{label}**")
             st.info(f"Confidence: **{confidence:.2f}%**")
 
+        except ValueError as ve:
+            st.error(f"🚫 Input Error: {ve}")
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"❌ Unexpected Error: {e}")
